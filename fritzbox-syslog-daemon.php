@@ -26,7 +26,7 @@ class FritzLogCenterEvent implements SysLogEvent
 	public function message() : string  { return $this->_message; }
 	
 	public function category() : string { return $this->_category; }
-
+	
 }
 
 class FritzLogEvent implements SysLogEvent
@@ -91,7 +91,11 @@ $shortopts .= "u::"; // Optional value
 $shortopts .= "l:"; // Required value
 
 $options = getopt($shortopts, array("udp::"));
-if ($options===FALSE)die();
+if ($options===FALSE)
+{
+	echo "getopt failed" . PHP_EOL;
+	die();
+}
 
 if(array_key_exists("l",$options)!=TRUE)
 {
@@ -104,7 +108,7 @@ if(array_key_exists("p",$options))
 }
 else
 {
-	$pwdfile = $fritz_user . '.pwdfile';
+	$pwdfile = __DIR__ .'/'.$fritz_user . '.pwdfile';
 }
 $fritz_pwd = file_get_contents($pwdfile);
 if($fritz_pwd===FALSE)
@@ -133,7 +137,7 @@ if ($fritz->login())
 		$ts_samples =array();
 		for($i=0;$i<20;$i++)
 		{
-			if($i==0)time_nanosleep(1, 500000000);
+			if($i==0)sleep(5);
 			array_push($samples, $fritz->getlogs());
 		}
 		foreach($samples as $sample)
@@ -166,7 +170,12 @@ if ($fritz->login())
 	while(TRUE)
 	{
 		$data = $fritz->getlogs();
-	
+		if ($data===FALSE)
+		{
+			$fritz->login();
+		}
+		else
+		{
 		//foreach ($data->Log as $row)	
 		//{	
 			//$log->appname($row->category)->msgid($row->id)->info($row->ts,$row->message);
@@ -191,13 +200,18 @@ if ($fritz->login())
 			//echo $row->tslog() . ' ' . $row->ts() .' ' .$row->category() .' ' . $row->id() .' ' . $row->message() .PHP_EOL;  
 			//var_dump($row);	
 		//}
-		//var_dump($existing);		
-		sleep(300);
+		//var_dump($existing);
+				
+			sleep(300);
+		}
 		$existing = getLogCenterTail($logcenter_path,$fritz_host);
 	}
 	
 }
-
+else
+{
+	echo "Login failed" . PHP_EOL;	
+}
 $fritz = null;
 $log=null;
 
@@ -342,7 +356,7 @@ class FritzLuaLog
 	private $debug;
 	
 	public function __construct(string $host,string $password, string $user = "",string $protocol = 'http', bool $with_debug_output = false)
-	{
+	{			
 		$this->sid = '0000000000000000';
 		$this->host = $host;
 		$this->user = $user;
@@ -362,12 +376,12 @@ class FritzLuaLog
 	}
 	function __destruct()
 	{
-		print_r("Destroying session " . $this->sid);
-		$this->logout();		
+		$this->logout();
+		print_r(" closing CURL session ");
 		curl_close ($this->ch);
 		print_r(" complete" . PHP_EOL);
 	}
-	public function login()
+	public function login() : bool
 	{	 
 		if($this->debug) print_r('Login URI ' . $this->loginURI . PHP_EOL);
 		
@@ -375,7 +389,8 @@ class FritzLuaLog
 		$tmp = simplexml_load_string(file_get_contents($this->loginURI));
 		if ($tmp->BlockTime > 0)
 		{
-			sleep($tmp->BlockTime);
+			print_r('Asked to wait for ' . $tmp->BlockTime . ' seconds'. PHP_EOL);
+			sleep(intval($tmp->BlockTime)+1);
 			$tmp = simplexml_load_string(file_get_contents($this->loginURI));
 		}
 		if ($this->debug)
@@ -393,14 +408,15 @@ class FritzLuaLog
 		{print_r(' Got session ID: ' . $tmp->asXML() . PHP_EOL);
 		}
 		$this->sid = (string)$tmp->SID;
-		return $sid ==='0000000000000000' ? FALSE: TRUE;
+		$result = $this->sid ==='0000000000000000';
+		if ($result===TRUE) echo 'Please come back in '. $tmp->BlockTime . ' seconds..' . PHP_EOL;
+		return !$result;
 	}
 	
-	public function parselogs(string $response) : FritzLog
+	public function parselogs(object $json) : FritzLog
 	{
 		$result = new FritzLog(date_default_timezone_get());
-		$json = json_decode($response);
-
+		
 		if($this->debug)print_r('JSON result =' . var_dump($json));
 		foreach($json->data->log as $row)
 		{
@@ -414,7 +430,7 @@ class FritzLuaLog
 		return $result;
 	}
 	
-	public function getlogs() : FritzLog
+	public function getlogs() 
 	{
 		
 		$postvars = ["xhr1" => "1",
@@ -433,18 +449,30 @@ class FritzLuaLog
 		curl_setopt($this->ch, CURLOPT_RETURNTRANSFER, true);
 		$first=0;
 		$response = curl_exec($this->ch);
-		return $this->parselogs($response);
+		$json = json_decode($response);
+		if ($this->sid===$json->sid)
+		{
+			return $this->parselogs($json);
+		}
+		else
+		{
+			return FALSE;
+		}
 	}
 	
 	public function logout()
 	{
-		// Logout
-		$tmp = simplexml_load_string(file_get_contents($this->loginURI.'?logout=1&sid=' . $this->sid));
-		if ($this->debug)
+		if ($this->sid!=='0000000000000000')
 		{
-			print_r(' Logout: ' . $tmp->asXML() . PHP_EOL);
+			echo 'Destroying session '. $this->sid ;
+			// Logout
+			$tmp = simplexml_load_string(file_get_contents($this->loginURI.'?logout=1&sid=' . $this->sid));
+			if ($this->debug)
+			{
+				print_r(' Logout: ' . $tmp->asXML() . PHP_EOL);
+			}
+			$this->sid = (string)$tmp->SID;
 		}
-		$this->sid = (string)$tmp->SID;
 		return $sid ==='0000000000000000' ? TRUE: FALSE;
 	}
 }
