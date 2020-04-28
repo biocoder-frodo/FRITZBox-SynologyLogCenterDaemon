@@ -81,13 +81,15 @@ class FritzLogEvent implements SysLogEvent
 
 $fritz_host = 'fritz.box';
 $fritz_user = 'stats';
-$logcenter_path = '/volume2/homes/admin/logs/'; // Your logs are located on the volume you installed the Log Center package on.
+$logcenter_path = '/var/services/homes/admin/logs/'; // Your logs are located on the volume you installed the Log Center package on.
 $syslog_port = 516; // my default port is 516
 
 $shortopts  = "";
 $shortopts .= "p::";  // Optional value
 $shortopts .= "f::"; // Optional value
 $shortopts .= "u::"; // Optional value
+$shortopts .= "k::"; // Optional value
+$shortopts .= "t::"; // Optional value
 $shortopts .= "l:"; // Required value
 
 $options = getopt($shortopts, array("udp::"));
@@ -101,6 +103,22 @@ if(array_key_exists("l",$options)!=TRUE)
 {
 	echo "LogCenter path must be specified" . PHP_EOL;
 	die();
+}
+if(array_key_exists("k",$options))
+{
+	$CAfile = $options["k"];
+}
+else
+{
+	$CAfile = __DIR__ .'/boxcert.cer';
+}
+if(array_key_exists("t",$options))
+{
+	$transport = $options["t"];
+}
+else
+{
+	$transport = 'http';
 }
 if(array_key_exists("p",$options))
 {
@@ -122,7 +140,14 @@ if(array_key_exists("f",$options)) $fritz_host = $options["f"];
 if(array_key_exists("u",$options)) $fritz_user = $options["u"];
 if(array_key_exists("udp",$options)) $syslog_port = intval($options["udp"]);
 
-$fritz = new FritzLuaLog($fritz_host, $fritz_pwd, $fritz_user,'http');
+$fgcOption = array(
+    "ssl" => array(
+        "cafile" => $CAfile,
+        "verify_peer"=> true,
+        "verify_peer_name"=> true,
+    ),
+);
+$fritz = new FritzLuaLog($fritz_host, $fritz_pwd, $fritz_user, $transport);
 
 $log = new UdpLog("127.0.0.1", $syslog_port);
 $log->facility(0)->procid(1)->hostname($fritz_host);
@@ -355,7 +380,7 @@ class FritzLuaLog
 	private $ch;
 	private $debug;
 	
-	public function __construct(string $host,string $password, string $user = "",string $protocol = 'http', bool $with_debug_output = false)
+	public function __construct(string $host,string $password, string $user = "",string $protocol = 'https', bool $with_debug_output = false)
 	{			
 		$this->sid = '0000000000000000';
 		$this->host = $host;
@@ -382,16 +407,18 @@ class FritzLuaLog
 		print_r(" complete" . PHP_EOL);
 	}
 	public function login() : bool
-	{	 
+	{	
+		global $fgcOption;
+		
 		if($this->debug) print_r('Login URI ' . $this->loginURI . PHP_EOL);
 		
 		// Get Challenge-String
-		$tmp = simplexml_load_string(file_get_contents($this->loginURI));
+		$tmp = simplexml_load_string(file_get_contents($this->loginURI, false, stream_context_create($fgcOption)));
 		if ($tmp->BlockTime > 0)
 		{
 			print_r('Asked to wait for ' . $tmp->BlockTime . ' seconds'. PHP_EOL);
 			sleep(intval($tmp->BlockTime)+1);
-			$tmp = simplexml_load_string(file_get_contents($this->loginURI));
+			$tmp = simplexml_load_string(file_get_contents($this->loginURI, false, stream_context_create($fgcOption)));
 		}
 		if ($this->debug)
 		{
@@ -403,7 +430,7 @@ class FritzLuaLog
 		$challenge_str = $challenge . '-' . $this->password;
 		$md_str = md5(iconv("UTF-8", "UTF-16LE",  $challenge_str));
 		$response = $challenge . '-' . $md_str;
-		$tmp = simplexml_load_string(file_get_contents($this->loginURI . '?user=' . $this->user . '&response=' . $response));
+		$tmp = simplexml_load_string(file_get_contents($this->loginURI . '?user=' . $this->user . '&response=' . $response, false, stream_context_create($fgcOption)));
 		if ($this->debug)
 		{print_r(' Got session ID: ' . $tmp->asXML() . PHP_EOL);
 		}
@@ -432,6 +459,7 @@ class FritzLuaLog
 	
 	public function getlogs() 
 	{
+		global $CAfile;
 		
 		$postvars = ["xhr1" => "1",
 					"sid" => $this->sid,
@@ -443,6 +471,7 @@ class FritzLuaLog
 		
 		curl_setopt($this->ch, CURLOPT_URL, $this->protocol . '://' . $this->host . '/data.lua');
 		curl_setopt($this->ch, CURLOPT_POST, 1);
+		curl_setopt($this->ch, CURLOPT_CAINFO, $CAfile);
 		curl_setopt($this->ch, CURLOPT_POSTFIELDS, http_build_query($postvars));
 		
 		// Receive server response ...
@@ -462,11 +491,13 @@ class FritzLuaLog
 	
 	public function logout()
 	{
+		global $fgcOption;
+		
 		if ($this->sid!=='0000000000000000')
 		{
 			echo 'Destroying session '. $this->sid ;
 			// Logout
-			$tmp = simplexml_load_string(file_get_contents($this->loginURI.'?logout=1&sid=' . $this->sid));
+			$tmp = simplexml_load_string(file_get_contents($this->loginURI.'?logout=1&sid=' . $this->sid, false, stream_context_create($fgcOption)));
 			if ($this->debug)
 			{
 				print_r(' Logout: ' . $tmp->asXML() . PHP_EOL);
