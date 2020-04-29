@@ -90,7 +90,9 @@ $shortopts .= "f::"; // Optional value
 $shortopts .= "u::"; // Optional value
 $shortopts .= "k::"; // Optional value
 $shortopts .= "t::"; // Optional value
-$shortopts .= "l:"; // Required value
+$shortopts .= "q"; // Optional value
+$shortopts .= "l:"; // Required value, unless q(uery) is specified.
+$runquery = FALSE;
 
 $options = getopt($shortopts, array("udp::"));
 if ($options===FALSE)
@@ -98,8 +100,11 @@ if ($options===FALSE)
 	echo "getopt failed" . PHP_EOL;
 	die();
 }
-
-if(array_key_exists("l",$options)!=TRUE)
+if(array_key_exists("q",$options))
+{
+	$runquery = TRUE;
+}
+if(array_key_exists("l",$options)!=TRUE and $runquery===FALSE)
 {
 	echo "LogCenter path must be specified" . PHP_EOL;
 	die();
@@ -148,6 +153,19 @@ $fgcOption = array(
     ),
 );
 $fritz = new FritzLuaLog($fritz_host, $fritz_pwd, $fritz_user, $transport);
+if ($runquery===TRUE)
+{
+	if ($fritz->login())
+	{
+		var_dump($fritz->getlogs());
+	}
+	else
+	{
+		echo "Login failed" . PHP_EOL;	
+	}
+	$fritz = null;
+	die();
+}
 
 $log = new UdpLog("127.0.0.1", $syslog_port);
 $log->facility(0)->procid(1)->hostname($fritz_host);
