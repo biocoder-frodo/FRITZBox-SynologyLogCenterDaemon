@@ -37,8 +37,6 @@ class FritzLog
 		{
 			foreach ((array)$this->Log as $row)
 			{
-				
-			//	var_dump($row);
 				$ts = (int)$row->ts();				
 				if($ts<>$prev_ts)
 				{

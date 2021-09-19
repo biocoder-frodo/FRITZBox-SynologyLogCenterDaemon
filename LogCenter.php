@@ -22,7 +22,6 @@ function getLogCenterTail(string $path, string $host, int $limit=400, int $fritz
 		{
 			foreach ($rows as $row)
 			{
-			//	var_dump($row);
 				$ts = (int)$row['utcsec'];
 				if($ts<>$prev_ts)
 				{
@@ -77,7 +76,6 @@ function getLogCenterTimeStamps(string $path, string $host, int $limit=10)
 		{
 			foreach ($rows as $row)
 			{
-			//	var_dump($row);
 				$ts = (int)$row['utcsec'];
 				if($ts<>$prev_ts)
 				{

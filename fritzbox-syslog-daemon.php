@@ -61,7 +61,6 @@ if ($fritz->login())
 		{
 			$row = $sample->Log[count($sample->Log)-1];
 			array_push($ts_samples, $row->ts());
-		  	//echo $row->tslog() . ' ' . $row->ts() .' ' .$row->category() .' ' . $row->id() .' ' . $row->message() .PHP_EOL;  
 		}
 		foreach($samples as $sample)
 		{
@@ -71,8 +70,6 @@ if ($fritz->login())
 				foreach ($sample->Log as $row)	
 				{	
 					$log->appname($row->category())->msgid($row->id())->info($row->tslog(),$row->message());
-					//echo $row->tslog() . ' ' . $row->ts() .' ' .$row->category() .' ' . $row->id() .' ' . $row->message() .PHP_EOL;  
-					//var_dump($row);	
 				}
 				
 				break;
@@ -93,31 +90,15 @@ if ($fritz->login())
 		}
 		else
 		{
-		//foreach ($data->Log as $row)	
-		//{	
-			//$log->appname($row->category)->msgid($row->id)->info($row->ts,$row->message);
-			//echo $row->tslog() . ' ' . $row->ts() .' ' .$row->category() .' ' . $row->id() .' ' . $row->message() .PHP_EOL;  
-			//var_dump($row);	
-		//}
-		//var_dump($existing);
+
 		
 		$diff = array_udiff( $data->Log, $existing, 'logEventComparison');
 		usort($diff,'logEventSortOrder');
-		
-		//var_dump($diff);
+
 		foreach ($diff as $row)	
 				{	
-					$log->appname($row->category())->msgid($row->id())->info($row->tslog(),$row->message());
-					//echo $row->tslog() . ' ' . $row->ts() .' ' .$row->category() .' ' . $row->id() .' ' . $row->message() .PHP_EOL;  
-					//var_dump($row);	
+					$log->appname($row->category())->msgid($row->id())->info($row->tslog(),$row->message());	
 				}
-		//foreach ($data->Log as $row)	
-		//{	
-			//$log->appname($row->category)->msgid($row->id)->info($row->ts,$row->message);
-			//echo $row->tslog() . ' ' . $row->ts() .' ' .$row->category() .' ' . $row->id() .' ' . $row->message() .PHP_EOL;  
-			//var_dump($row);	
-		//}
-		//var_dump($existing);
 				
 			sleep(300);
 		}

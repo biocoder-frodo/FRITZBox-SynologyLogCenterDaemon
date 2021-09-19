@@ -197,7 +197,7 @@ function parseCommandLine(string $extraShort, $extraLong, string $user="stats")
 	        "verify_peer_name"=> true,
 	    ),
 	);
-	var_dump($fgcOption);
+
 	return $options;
 }
 ?>
