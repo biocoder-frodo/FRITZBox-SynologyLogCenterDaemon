@@ -116,4 +116,27 @@ function getLogCenterDb(string $path, string $host)
 	     throw new \PDOException($e->getMessage(), (int)$e->getCode());
 	}
 }
+function getLogCenterCount(string $path, string $host, int $limit=400, int $fritz_limit=400)
+{
+	$last_ts = array();
+	$tail = array();
+	$prev_ts=0;
+	$valsw=0;
+	
+	$dbh = getLogCenterDb($path, $host);
+	$query =  "select * FROM logs order by utcsec desc, id desc limit " . $fritz_limit;
+	//echo($query . PHP_EOL);
+	
+	$rows = $dbh->query($query);
+	if($rows===false)
+	{
+		echo 'LogCenter table empty.' . PHP_EOL;
+		return 0;
+	}
+	else
+	{
+		$rows = $rows->fetchall();		
+		return count($rows);
+	}
+}
 ?>

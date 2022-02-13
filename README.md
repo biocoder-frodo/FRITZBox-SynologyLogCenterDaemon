@@ -17,4 +17,5 @@ The script has the following command line options:
 * -f Optional, the name of your FRITZ!Box, other than fritz.box
 * -u Optional, the name of your FRITZ!Box user, other than stats
 * -q Optional, fetch the eventlog once and dump it to the console
+* -d Optional, test the database connection and dump a rowcount to the console
 * --udp Optional, the UDP port to contact Log Center on. The default port is 516

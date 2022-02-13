@@ -11,11 +11,12 @@ $logcenter_path = '/var/services/homes/admin/logs/'; // Your logs are located on
 $syslog_port = 516; // my default port is 516
 
 //parse the commandline to get the connectiondetails for your Fritz!Box, the default username is 'stats'.
-$options = parseCommandLine('ql:', array("udp::"), 'stats');
+$options = parseCommandLine('dql:', array("udp::"), 'stats');
 
+$rundbquery = cmdLineSwitch("d",$options);
 $runquery = cmdLineSwitch("q",$options);
 
-if(array_key_exists("l",$options)!=TRUE and $runquery===FALSE)
+if(array_key_exists("l",$options)!=TRUE and ($runquery===FALSE or $rundbquery===TRUE))
 {
 	echo "LogCenter path must be specified" . PHP_EOL;
 	die();
@@ -24,6 +25,23 @@ if(array_key_exists("l",$options)!=TRUE and $runquery===FALSE)
 $logcenter_path = $options["l"];
 
 if(array_key_exists("udp",$options)) $syslog_port = intval($options["udp"]);
+
+if ($rundbquery===TRUE)
+{
+	$rowcount=-1;
+	try
+	{
+		// sudo php7x ./fritzbox-syslog-daemon.php -d -l=/var/services/homes/admin/logs/
+		$rowcount = getLogCenterCount($logcenter_path,$fritz_host);
+	}
+	catch(Exception $e)
+	{
+		echo 'Failed to open the database to get the record count of the logs table. Insufficient privileges or file not found?'. PHP_EOL;
+		echo 'Caught exception: '.  $e->getMessage() . PHP_EOL;
+	}
+	var_dump($rowcount);
+	die();
+}
 
 // prepare the session
 $fritz = new FritzLuaLog($fritz_host, $fritz_pwd, $fritz_user, $transport);
