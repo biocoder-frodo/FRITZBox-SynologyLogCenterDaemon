@@ -116,6 +116,14 @@ function getLogCenterDb(string $path, string $host)
 	     throw new \PDOException($e->getMessage(), (int)$e->getCode());
 	}
 }
+function removeDbInitMarker(string $path, string $host)
+{	
+	$dbh = getLogCenterDb($path, $host);
+	$count = $dbh->exec("delete from logs where prog='SysLogDaemon'");
+	$count = $dbh->exec("vacuum");
+	echo $count . ' row(s) removed.' . PHP_EOL;
+	
+}
 function getLogCenterCount(string $path, string $host, int $limit=400, int $fritz_limit=400)
 {
 	$last_ts = array();

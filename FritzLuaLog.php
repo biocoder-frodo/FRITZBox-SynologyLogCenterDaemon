@@ -5,7 +5,7 @@ include("FritzLog.php");
 class FritzLuaLog extends FritzLuaSession
 {
 	
-	public function parselogs(object $json) : FritzLog
+	public function parselogs(object $json, string $ignore) : FritzLog
 	{
 		$result = new FritzLog(date_default_timezone_get());
 		
@@ -15,14 +15,27 @@ class FritzLuaLog extends FritzLuaSession
 			$first=$first+1;
 			$datetime= str_replace('.','-',substr($row[0],0,6).'20'.substr($row[0],-2)) . ' ' . $row[1] . '.000'; // this will be bad in 2099, idc tbh
 			$dt = new DateTime($datetime, new DateTimeZone(date_default_timezone_get()));			
-
-			$result->add($dt,(int)$row[4],(int)$row[3], $row[2]); 
+			if (strlen($ignore)>0)
+			{  
+				if(str_starts_with($row[2], $ignore) || str_starts_with($datetime, '2070-'))
+				{
+					;
+				}
+				else
+				{
+					$result->add($dt,(int)$row[4],(int)$row[3], $row[2]);
+				}
+			}
+			else
+			{
+				$result->add($dt,(int)$row[4],(int)$row[3], $row[2]); 
+			}
 		
 		}		
 		return $result;
 	}
 	
-	public function getlogs() 
+	public function getlogs(string $ignore="") 
 	{
 		
 		$postvars = ["xhr1" => "1",
@@ -37,7 +50,7 @@ class FritzLuaLog extends FritzLuaSession
 		
 		if ($json!==FALSE)
 		{
-			return $this->parselogs($json);
+			return $this->parselogs($json, $ignore);
 		}
 		else
 		{

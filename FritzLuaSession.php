@@ -136,9 +136,11 @@ function parseCommandLine(string $extraShort, $extraLong, string $user="stats")
 	global $transport;
 	global $pwdfile;
 	global $fritz_pwd;
+	global $fritz_repeater;
 	
 	$fritz_host = 'fritz.box';
 	$fritz_user = $user;
+	$fritz_repeater = FALSE;
 	
 	$shortopts  = "";
 	$shortopts .= "p::";  // Optional value
@@ -146,8 +148,11 @@ function parseCommandLine(string $extraShort, $extraLong, string $user="stats")
 	$shortopts .= "u::"; // Optional value
 	$shortopts .= "k::"; // Optional value
 	$shortopts .= "t::"; // Optional value
+	$shortopts .= "r::"; // Optional value	
 	$shortopts .= $extraShort;
 
+	
+	
 	$options = getopt($shortopts, $extraLong);
 	if ($options===FALSE)
 	{
@@ -171,24 +176,34 @@ function parseCommandLine(string $extraShort, $extraLong, string $user="stats")
 	{
 		$transport = 'https';
 	}
+	if(array_key_exists("f",$options)) $fritz_host = $options["f"];
+	if(array_key_exists("u",$options)) $fritz_user = $options["u"];
+	if(array_key_exists("r",$options))
+	{ 
+		$fritz_host = $options["r"];
+		$fritz_repeater = TRUE;	
+	}
 	if(array_key_exists("p",$options))
 	{
 		$pwdfile = $options["p"];
 	}
 	else
 	{
-		$pwdfile = __DIR__ .'/'.$fritz_user . '.pwdfile';
+		if($fritz_repeater==FALSE)
+		{
+			$pwdfile = __DIR__ .'/'.$fritz_user . '.pwdfile';
+		}
+		else
+		{
+			$pwdfile = __DIR__ .'/'.$fritz_host . '.pwdfile';
+		}
 	}
 	$fritz_pwd = file_get_contents($pwdfile);
 	if($fritz_pwd===FALSE)
 	{
-		echo "Password file not found" . PHP_EOL;
+		echo "Password file '" . $pwdfile . "' not found" . PHP_EOL;
 		die();	
 	}
-	
-	if(array_key_exists("f",$options)) $fritz_host = $options["f"];
-	if(array_key_exists("u",$options)) $fritz_user = $options["u"];
-	
 	
 	$fgcOption = array(
 	    "ssl" => array(

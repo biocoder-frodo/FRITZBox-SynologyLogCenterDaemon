@@ -11,21 +11,38 @@ $logcenter_path = '/var/services/homes/admin/logs/'; // Your logs are located on
 $syslog_port = 516; // my default port is 516
 
 //parse the commandline to get the connectiondetails for your Fritz!Box, the default username is 'stats'.
-$options = parseCommandLine('dql:', array("udp::"), 'stats');
-
+$options = parseCommandLine('idql:', array("udp::","ignore::"), 'stats');
+echo 'pid =' . getmypid() . PHP_EOL;
+var_dump($options);
+	
 $rundbquery = cmdLineSwitch("d",$options);
 $runquery = cmdLineSwitch("q",$options);
+$initDb = cmdLineSwitch("i",$options);
+
+$filter="";
+if(array_key_exists("ignore",$options)) $filter = $options["ignore"];
 
 if(array_key_exists("l",$options)!=TRUE and ($runquery===FALSE or $rundbquery===TRUE))
 {
 	echo "LogCenter path must be specified" . PHP_EOL;
 	die();
 }
-
 $logcenter_path = $options["l"];
 
 if(array_key_exists("udp",$options)) $syslog_port = intval($options["udp"]);
 
+$log = new UdpLog("127.0.0.1", $syslog_port);
+$log->facility(0)->procid(1)->hostname($fritz_host);
+
+if ($initDb===TRUE)
+{
+	$ts = new DateTime();
+	$log->appname("SysLogDaemon")->info($ts->format('c'),"Database initialization message");
+	echo 'Database should be created from syslog packet...' . PHP_EOL;
+	sleep(5);
+	removeDbInitMarker($logcenter_path,$fritz_host);
+	die();
+}
 if ($rundbquery===TRUE)
 {
 	$rowcount=-1;
@@ -49,7 +66,7 @@ if ($runquery===TRUE)
 {
 	if ($fritz->login())
 	{
-		var_dump($fritz->getlogs());
+		var_dump($fritz->getlogs($filter));
 	}
 	else
 	{
@@ -58,9 +75,6 @@ if ($runquery===TRUE)
 	$fritz = null;
 	die();
 }
-
-$log = new UdpLog("127.0.0.1", $syslog_port);
-$log->facility(0)->procid(1)->hostname($fritz_host);
 
 if ($fritz->login())
 {
@@ -73,7 +87,7 @@ if ($fritz->login())
 		for($i=0;$i<20;$i++)
 		{
 			if($i==0)sleep(5);
-			array_push($samples, $fritz->getlogs());
+			array_push($samples, $fritz->getlogs($filter));
 		}
 		foreach($samples as $sample)
 		{
@@ -98,10 +112,10 @@ if ($fritz->login())
 	}
 	
 	$existing = getLogCenterTail($logcenter_path,$fritz_host);
-	
+	echo 'Starting loop...' . PHP_EOL;
 	while(TRUE)
 	{
-		$data = $fritz->getlogs();
+		$data = $fritz->getlogs($filter);
 		if ($data===FALSE)
 		{
 			$fritz->login();
