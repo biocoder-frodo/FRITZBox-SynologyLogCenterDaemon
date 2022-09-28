@@ -6,6 +6,8 @@ include_once 'FritzLuaLog.php';
 include_once 'LogCenter.php';
 include_once 'UdpLog.php';
 
+global $dsm;
+$dsm=6;
 
 $logcenter_path = '/var/services/homes/admin/logs/'; // Your logs are located on the volume you installed the Log Center package on.
 $syslog_port = 516; // my default port is 516
@@ -18,6 +20,9 @@ var_dump($options);
 $rundbquery = cmdLineSwitch("d",$options);
 $runquery = cmdLineSwitch("q",$options);
 $initDb = cmdLineSwitch("i",$options);
+
+$anonymousDb = cmdLineSwitch("a",$options);
+if ($anonymousDb===TRUE) $dsm=7;
 
 $filter="";
 if(array_key_exists("ignore",$options)) $filter = $options["ignore"];

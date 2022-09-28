@@ -7,7 +7,7 @@ function getLogCenterTail(string $path, string $host, int $limit=400, int $fritz
 	$valsw=0;
 	
 	$dbh = getLogCenterDb($path, $host);
-	$query =  "select * FROM logs order by utcsec desc, id desc limit " . $fritz_limit;
+	$query =  "select * FROM logs".((6==$dsm)?(""):(" where host='".$host."'"))." order by utcsec desc, id desc limit " . $fritz_limit;
 	//echo($query . PHP_EOL);
 	
 	$rows = $dbh->query($query);
@@ -37,7 +37,7 @@ function getLogCenterTail(string $path, string $host, int $limit=400, int $fritz
 			}
 		}
 		
-		$query =  "select * FROM logs where utcsec>=" .$prev_ts ." order by utcsec desc, id desc limit " . $fritz_limit;
+		$query =  "select * FROM logs where utcsec>=" .$prev_ts .((6==$dsm)?(""):(" and host='".$host."'"))." order by utcsec desc, id desc limit " . $fritz_limit;
 		//echo($query . PHP_EOL);
 		$rows = $dbh->query($query);
 		$rows = $rows->fetchall();		
@@ -62,8 +62,9 @@ function getLogCenterTimeStamps(string $path, string $host, int $limit=10)
 	$valsw=0;
 	
 	$dbh = getLogCenterDb($path, $host);
-	$query =  "select * FROM logs order by utcsec desc, id desc limit 399";
-	
+	$query =  "select * FROM logs".((6==$dsm)?(""):(" where host='".$host."'"))." order by utcsec desc, id desc limit 399";
+	//echo($query . PHP_EOL);
+
 	$rows = $dbh->query($query);
 	if($rows===false)
 	{
@@ -104,8 +105,8 @@ function getLogCenterDb(string $path, string $host)
 			    PDO::ATTR_EMULATE_PREPARES   => false,
 	];
 
-	$dir = 'sqlite:'.$path.$host.'/SYNOSYSLOGDB_'.$host.'.DB';
-	
+	$dir = (6 == $dsm) ? 'sqlite:'.$path.$host.'/SYNOSYSLOGDB_'.$host.'.DB' : 'sqlite:'.$path.'/SYNOSYSLOGDB_pb_ARCH.DB';
+	//echo $dir . PHP_EOL;
 	try
 	{
 		$pdo  = new PDO($dir);
@@ -132,7 +133,7 @@ function getLogCenterCount(string $path, string $host, int $limit=400, int $frit
 	$valsw=0;
 	
 	$dbh = getLogCenterDb($path, $host);
-	$query =  "select * FROM logs order by utcsec desc, id desc limit " . $fritz_limit;
+	$query =  "select * FROM logs".((6==$dsm)?(""):(" where host='".$host."'"))." order by utcsec desc, id desc limit " . $fritz_limit;
 	//echo($query . PHP_EOL);
 	
 	$rows = $dbh->query($query);
