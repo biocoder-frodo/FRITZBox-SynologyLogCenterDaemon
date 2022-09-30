@@ -99,7 +99,6 @@ class FritzLuaSession
 		
 		// Receive server response ...
 		curl_setopt($this->ch, CURLOPT_RETURNTRANSFER, true);
-		$first=0;
 		$response = curl_exec($this->ch);
 		if ($parseJson===true)
 		{

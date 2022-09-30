@@ -6,16 +6,13 @@ include_once 'FritzLuaLog.php';
 include_once 'LogCenter.php';
 include_once 'UdpLog.php';
 
-global $dsm;
-$dsm=6;
-
 $logVersion=0;
 
-$logcenter_path = '/var/services/homes/admin/logs/'; // Your logs are located on the volume you installed the Log Center package on.
+$logcenter_path = '/var/services/homes/admin/logs'; // Your logs are located on the volume you installed the Log Center package on.
 $syslog_port = 516; // my default port is 516
 
 //parse the commandline to get the connectiondetails for your Fritz!Box, the default username is 'stats'.
-$options = parseCommandLine('idqjl:', array("udp::","ignore::"), 'stats');
+$options = parseCommandLine('iadqjl:', array("udp::","ignore::"), 'stats');
 echo 'pid =' . getmypid() . PHP_EOL;
 var_dump($options);
 	
@@ -25,8 +22,7 @@ $initDb = cmdLineSwitch("i",$options);
 
 if (cmdLineSwitch("j",$options)==TRUE) $logVersion=1;
 
-$anonymousDb = cmdLineSwitch("a",$options);
-if ($anonymousDb===TRUE) $dsm=7;
+setAnonymousDb($options);
 
 $filter="";
 if(array_key_exists("ignore",$options)) $filter = $options["ignore"];
@@ -36,7 +32,13 @@ if(array_key_exists("l",$options)!=TRUE and ($runquery===FALSE or $rundbquery===
 	echo "LogCenter path must be specified" . PHP_EOL;
 	die();
 }
+
 $logcenter_path = $options["l"];
+if(str_ends_with7($options["l"].'/','//'))
+{
+	$logcenter_path = substr($options["l"],0,strlen($options["l"])-1);
+};
+//echo $logcenter_path.PHP_EOL;
 
 if(array_key_exists("udp",$options)) $syslog_port = intval($options["udp"]);
 
@@ -57,7 +59,7 @@ if ($rundbquery===TRUE)
 	$rowcount=-1;
 	try
 	{
-		// sudo php7x ./fritzbox-syslog-daemon.php -d -l=/var/services/homes/admin/logs/
+		// sudo php7x ./fritzbox-syslog-daemon.php -d -l=/var/services/homes/admin/logs
 		$rowcount = getLogCenterCount($logcenter_path,$fritz_host);
 	}
 	catch(Exception $e)
@@ -163,5 +165,17 @@ function logEventComparison(SysLogEvent $rte, SysLogEvent $dbe)
 function logEventSortOrder(SysLogEvent $a, SysLogEvent $b)
 {
 	return ($a->ts() - $b->ts());
+}
+function setAnonymousDb($options)
+{
+	global $dsm;
+	$dsm = (TRUE === cmdLineSwitch("a",$options))? 7 : 6;
+}
+function str_ends_with7(string $haystack, string $needle):bool
+{
+	if(strlen($needle)>strlen($haystack))return FALSE;
+	if(strlen($needle)==strlen($haystack))return $haystack===$needle;
+	$hay=substr($haystack,strlen($haystack)-strlen($needle),strlen($needle));
+	return $needle===$hay;
 }
 ?>

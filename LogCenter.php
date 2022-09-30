@@ -1,6 +1,8 @@
 <?
 function getLogCenterTail(string $path, string $host, int $limit=400, int $fritz_limit=400)
 {
+	global $dsm;
+	
 	$last_ts = array();
 	$tail = array();
 	$prev_ts=0;
@@ -56,7 +58,9 @@ function getLogCenterTail(string $path, string $host, int $limit=400, int $fritz
 
 
 function getLogCenterTimeStamps(string $path, string $host, int $limit=10)
-{
+{	
+	global $dsm;
+
 	$last_ts = array();
 	$prev_ts=0;
 	$valsw=0;
@@ -99,13 +103,15 @@ function getLogCenterTimeStamps(string $path, string $host, int $limit=10)
 
 function getLogCenterDb(string $path, string $host)
 {
+	global $dsm;
+
 	$options = [
 			    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
 			    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
 			    PDO::ATTR_EMULATE_PREPARES   => false,
 	];
 
-	$dir = (6 == $dsm) ? 'sqlite:'.$path.$host.'/SYNOSYSLOGDB_'.$host.'.DB' : 'sqlite:'.$path.'/SYNOSYSLOGDB_pb_ARCH.DB';
+	$dir = (6 == $dsm) ? 'sqlite:'.$path.'/'.$host.'/SYNOSYSLOGDB_'.$host.'.DB' : 'sqlite:'.$path.'/SYNOSYSLOGDB__ARCH.DB';
 	//echo $dir . PHP_EOL;
 	try
 	{
@@ -127,6 +133,8 @@ function removeDbInitMarker(string $path, string $host)
 }
 function getLogCenterCount(string $path, string $host, int $limit=400, int $fritz_limit=400)
 {
+	global $dsm;
+
 	$last_ts = array();
 	$tail = array();
 	$prev_ts=0;
