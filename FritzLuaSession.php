@@ -103,7 +103,6 @@ class FritzLuaSession
 		$response = curl_exec($this->ch);
 		if ($parseJson===true)
 		{
-			file_put_contents("response.json",$response);
 			$json = json_decode($response);
 			if ($this->sid===$json->sid)
 			{

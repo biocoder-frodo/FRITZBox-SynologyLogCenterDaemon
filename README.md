@@ -22,3 +22,5 @@ The script has the following command line options:
 * -i Optional, initialises the Synology SQLite database. Logcenter has to be running and configured to listen to the port you specify.
 * --udp Optional, the UDP port to contact Log Center on. The default port is 516.
 * -a Optional, it appears that on DSM7 the source host is no longer in the filename of the Logcenter database. Use this option if you are on DSM 7.
+* -j Optional, newer FRITZ!OS versions return a changed JSON response. Use this if you get the "Uncaught Error: Cannot use object of type stdClass as array in FritzLuaLog.php", while testing the -q option.
+

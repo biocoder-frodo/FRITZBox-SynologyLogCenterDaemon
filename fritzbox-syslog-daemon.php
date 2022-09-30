@@ -9,17 +9,22 @@ include_once 'UdpLog.php';
 global $dsm;
 $dsm=6;
 
+global $logVersion;
+$logVersion=0;
+
 $logcenter_path = '/var/services/homes/admin/logs/'; // Your logs are located on the volume you installed the Log Center package on.
 $syslog_port = 516; // my default port is 516
 
 //parse the commandline to get the connectiondetails for your Fritz!Box, the default username is 'stats'.
-$options = parseCommandLine('idql:', array("udp::","ignore::"), 'stats');
+$options = parseCommandLine('idqjl:', array("udp::","ignore::"), 'stats');
 echo 'pid =' . getmypid() . PHP_EOL;
 var_dump($options);
 	
 $rundbquery = cmdLineSwitch("d",$options);
 $runquery = cmdLineSwitch("q",$options);
 $initDb = cmdLineSwitch("i",$options);
+
+if (cmdLineSwitch("j",$options)==TRUE) $logVersion=1;
 
 $anonymousDb = cmdLineSwitch("a",$options);
 if ($anonymousDb===TRUE) $dsm=7;
