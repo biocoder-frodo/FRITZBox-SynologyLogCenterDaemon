@@ -9,7 +9,6 @@ include_once 'UdpLog.php';
 global $dsm;
 $dsm=6;
 
-global $logVersion;
 $logVersion=0;
 
 $logcenter_path = '/var/services/homes/admin/logs/'; // Your logs are located on the volume you installed the Log Center package on.

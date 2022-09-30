@@ -7,6 +7,8 @@ class FritzLuaLog extends FritzLuaSession
 	
 	public function parselogs(object $json, string $ignore) : FritzLog
 	{
+		global $logVersion;
+
 		$result = new FritzLog(date_default_timezone_get());
 		
 		if($this->debug)print_r('JSON result =' . var_dump($json));
