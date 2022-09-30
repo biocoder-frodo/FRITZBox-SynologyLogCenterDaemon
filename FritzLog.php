@@ -25,7 +25,7 @@ class FritzLog
 		return $this->_offset = $value;
 	}
 	
-	public function add(DateTime $ts, int $category, int $id, string $message)
+	public function add(DateTime $ts, string $category, int $id, string $message)
 	{
 		array_push($this->Log, new FritzLogEvent($this, $ts, $category, $id, $message));
 	}
