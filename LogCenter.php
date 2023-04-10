@@ -47,7 +47,7 @@ function getLogCenterTail(string $path, string $host, int $limit=400, int $fritz
 		{
 			foreach ($rows as $row)
 			{
-				array_push($tail, new FritzLogCenterEvent((int)$row['utcsec'], (string)$row['prog'], (string)$row['msg']));
+				array_push($tail, new FritzLogCenterEvent((int)$row['id'], (int)$row['utcsec'], (string)$row['prog'], (string)$row['msg']));
 			}
 		}
 	}
@@ -56,6 +56,37 @@ function getLogCenterTail(string $path, string $host, int $limit=400, int $fritz
 	return $tail;
 }
 
+function getLogCenterRepeatEvent(string $path, string $host, string $message, int $ts)
+{
+	global $dsm;
+	
+	$result=array();
+	
+	$dbh = getLogCenterDb($path, $host);
+		
+	$query =  "select * FROM logs where (utcsec=" .$ts. " or utcsec=" .($ts-1). ") and msg='".$message."'".((6==$dsm)?(""):(" and host='".$host."'"))." order by utcsec desc, id desc";
+	
+	$rows = $dbh->query($query);
+	$rows = $rows->fetchall();		
+	if (count($rows)>0)
+	{
+		foreach ($rows as $row)
+		{
+			array_push($result, new FritzLogCenterEvent((int)$row['id'], (int)$row['utcsec'], (string)$row['prog'], (string)$row['msg']));
+		}
+	}
+	
+	$last_ts=null;
+	$dbh = null;
+	return $result;	
+}
+function removeLogCenterRepeatEvent(string $path, string $host, int $id)
+{
+	$dbh = getLogCenterDb($path, $host);
+	$count = $dbh->exec("delete from logs where id=".$id);
+	echo $count . ' row(s) removed.' . PHP_EOL;
+
+}
 
 function getLogCenterTimeStamps(string $path, string $host, int $limit=10)
 {	
