@@ -165,6 +165,8 @@ if ($fritz->login())
 			
 			foreach($repeats as $repeat)
 			{
+				//echo 'message repeats {'.$repeat->message().'}' .PHP_EOL;
+
 				if($lastRepeats[$repeat->key()]===NULL){
 					$lastRepeats[$repeat->key()] = $repeat;
 				}
@@ -184,6 +186,12 @@ if ($fritz->login())
 						}
 					echo PHP_EOL;
 				}
+				if($repeat->count()===2 && $repeat->firstId()!=NULL){
+						echo 'first message superseded by #2.';
+						removeLogCenterRepeatEvent($logcenter_path,$fritz_host, $repeat->firstId());
+						echo' firstId:'.$repeat->firstId().PHP_EOL;
+				}
+
 			}
 		}
 		$existing = getLogCenterTail($logcenter_path,$fritz_host);
