@@ -1,5 +1,5 @@
 <?
-function getLogCenterTail(string $path, string $host, int $limit=400, int $fritz_limit=400)
+function getLogCenterTail(string $path, string $host, int $limit=2000)
 {
 	global $dsm;
 	
@@ -9,7 +9,7 @@ function getLogCenterTail(string $path, string $host, int $limit=400, int $fritz
 	$valsw=0;
 	
 	$dbh = getLogCenterDb($path, $host);
-	$query =  "select * FROM logs".((6==$dsm)?(""):(" where host='".$host."'"))." order by utcsec desc, id desc limit " . $fritz_limit;
+	$query =  "select * FROM logs".((6==$dsm)?(""):(" where host='".$host."'"))." order by utcsec desc, id desc limit " . $limit;
 	//echo($query . PHP_EOL);
 	
 	$rows = $dbh->query($query);
@@ -39,7 +39,7 @@ function getLogCenterTail(string $path, string $host, int $limit=400, int $fritz
 			}
 		}
 		
-		$query =  "select * FROM logs where utcsec>=" .$prev_ts .((6==$dsm)?(""):(" and host='".$host."'"))." order by utcsec desc, id desc limit " . $fritz_limit;
+		$query =  "select * FROM logs where utcsec>=" .$prev_ts .((6==$dsm)?(""):(" and host='".$host."'"))." order by utcsec desc, id desc limit " . $limit;
 		//echo($query . PHP_EOL);
 		$rows = $dbh->query($query);
 		$rows = $rows->fetchall();		
@@ -52,6 +52,40 @@ function getLogCenterTail(string $path, string $host, int $limit=400, int $fritz
 		}
 	}
 	$last_ts=null;
+	$dbh = null;
+	return $tail;
+}
+function getLogCenterTailFromTime(string $path, string $host, int $utcsec)
+{
+	global $dsm;
+	
+	$tail = array();
+	
+	$dbh = getLogCenterDb($path, $host);
+	$query =  "select * FROM logs".((6==$dsm)?(""):(" where host='".$host."'"))." order by utcsec desc, id desc limit 1";
+	//echo($query . PHP_EOL);
+	
+	$rows = $dbh->query($query);
+	if($rows===false)
+	{
+		echo 'LogCenter table empty.' . PHP_EOL;
+	}
+	else
+	{
+		$query =  "select * FROM logs where utcsec >= ".$utcsec."".((6==$dsm)?(""):(" and host='".$host."'"))." order by utcsec desc, id desc";
+		var_dump($query);
+		//echo($query . PHP_EOL);
+		$rows = $dbh->query($query);
+		$rows = $rows->fetchall();		
+		if (count($rows)>0)
+		{
+			foreach ($rows as $row)
+			{
+				array_push($tail, new FritzLogCenterEvent((int)$row['id'], (int)$row['utcsec'], (string)$row['prog'], (string)$row['msg']));
+			}
+		}
+	}
+
 	$dbh = null;
 	return $tail;
 }
@@ -162,29 +196,24 @@ function removeDbInitMarker(string $path, string $host)
 	echo $count . ' row(s) removed.' . PHP_EOL;
 	
 }
-function getLogCenterCount(string $path, string $host, int $limit=400, int $fritz_limit=400)
+function getLogCenterCount(string $path, string $host, int $limit=400)
 {
 	global $dsm;
 
-	$last_ts = array();
-	$tail = array();
-	$prev_ts=0;
-	$valsw=0;
-	
 	$dbh = getLogCenterDb($path, $host);
-	$query =  "select * FROM logs".((6==$dsm)?(""):(" where host='".$host."'"))." order by utcsec desc, id desc limit " . $fritz_limit;
+	$query =  "select count(*) as rows from (select * from logs".((6==$dsm)?(""):(" where host='".$host."'"))." limit " . $limit.")";
 	//echo($query . PHP_EOL);
 	
-	$rows = $dbh->query($query);
-	if($rows===false)
+	$result = $dbh->query($query);
+	if($result===false)
 	{
-		echo 'LogCenter table empty.' . PHP_EOL;
+		echo 'LogCenter table does not exist.' . PHP_EOL;
 		return 0;
 	}
 	else
 	{
-		$rows = $rows->fetchall();		
-		return count($rows);
+		$result = $result->fetchall();
+		return intval($result[0]["rows"]);
 	}
 }
 ?>

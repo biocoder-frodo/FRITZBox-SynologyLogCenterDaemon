@@ -136,62 +136,96 @@ if ($fritz->login())
 		}
 		else
 		{
-
-		
-		$diff = array_udiff( $data->Log, $existing, 'logEventComparison');
-		usort($diff,'logEventSortOrder');
-
-		foreach ($diff as $row)	
-				{	
-					$log->appname($row->category())->msgid($row->id())->info($row->tslog(),$row->message());	
-				}
+			$diff = array_udiff( $data->Log, $existing, 'logEventComparison');
+			usort($diff,'logEventSortOrder');
+	
+			$added = FALSE;
+			foreach ($diff as $row)	
+			{
+				if($added===FALSE) $added = $row->ts();
+				
+				//echo 'adding ts '.$row->ts().PHP_EOL;
+				$log->appname($row->category())->msgid($row->id())->info($row->tslog(),$row->message());	
+			}
 				
 			sleep(300);
 			
-			// now filter out duplicates of repeated messages we captured before
-			$repeats = array();
-			$repeatKeys = array();
-			foreach(getLogCenterTail($logcenter_path,$fritz_host) as $row)
-			
-			if (preg_match($repeatFilter, $row->message(), $match, PREG_UNMATCHED_AS_NULL)===1)
-			{	
-				$repeat = new FritzLogCenterRepeatedEvent($logcenter_path,$fritz_host,$match,$row);
-				array_push($repeats, $repeat);
-				array_push($repeatKeys, $repeat->key());
-			}
-		
-			array_unique($repeatKeys,SORT_STRING);
-			$lastRepeats=array_fill_keys($repeatKeys,NULL);
-			
-			foreach($repeats as $repeat)
+			if($added===FALSE)
 			{
-				//echo 'message repeats {'.$repeat->message().'}' .PHP_EOL;
-
-				if($lastRepeats[$repeat->key()]===NULL){
-					$lastRepeats[$repeat->key()] = $repeat;
-				}
-				else if ($lastRepeats[$repeat->key()]->count() < $repeat->count()){
-					$lastRepeats[$repeat->key()] = $repeat;
-				}
+				//no changes
 			}
-			foreach($repeats as $repeat)
+			else
 			{
-				if(array_key_exists($repeat->key(),$lastRepeats)===true && $lastRepeats[$repeat->key()]->count() != $repeat->count()){			
-					echo 'message #'.$repeat->count().' superseded by #'.$lastRepeats[$repeat->key()]->count() .PHP_EOL;
-					echo 'message #'.$repeat->count().': id '.$repeat->id().' ';
-					removeLogCenterRepeatEvent($logcenter_path,$fritz_host, $repeat->id());
-					if ($repeat->firstId()!=NULL){
-						removeLogCenterRepeatEvent($logcenter_path,$fritz_host, $repeat->firstId());
-						echo' firstId:'.$repeat->firstId();
-						}
-					echo PHP_EOL;
+				$tail = getLogCenterTailFromTime($logcenter_path,$fritz_host,$added);
+				
+				$added = array();
+				$addedKeys = array();
+				
+				foreach($tail as $row)
+				{
+					array_push($added, $row);
+					array_push($addedKeys, $row->key());
 				}
-				if($repeat->count()===2 && $repeat->firstId()!=NULL){
-						echo 'first message superseded by #2.';
-						removeLogCenterRepeatEvent($logcenter_path,$fritz_host, $repeat->firstId());
-						echo' firstId:'.$repeat->firstId().PHP_EOL;
+				array_unique($addedKeys,SORT_STRING);
+				$uniqueTail=array_fill_keys($addedKeys,NULL);
+				
+				foreach($tail as $row)
+				{
+					if($uniqueTail[$row->key()]===NULL){
+						$uniqueTail[$row->key()] = $row;
+					}
+					else {
+						echo 'message duplicated by last fetch from device' .PHP_EOL;
+					}
 				}
-
+				$uniqueTail=NULL;
+				$added=NULL;
+				$addedKeys=NULL;
+				
+				// now filter out duplicates of repeated messages we captured before
+				$repeats = array();
+				$repeatKeys = array();
+				foreach(getLogCenterTail($logcenter_path,$fritz_host) as $row)
+				
+				if (preg_match($repeatFilter, $row->message(), $match, PREG_UNMATCHED_AS_NULL)===1)
+				{	
+					$repeat = new FritzLogCenterRepeatedEvent($logcenter_path,$fritz_host,$match,$row);
+					array_push($repeats, $repeat);
+					array_push($repeatKeys, $repeat->key());
+				}
+			
+				array_unique($repeatKeys,SORT_STRING);
+				$lastRepeats=array_fill_keys($repeatKeys,NULL);
+				
+				foreach($repeats as $repeat)
+				{
+					//echo 'message repeats {'.$repeat->message().'}' .PHP_EOL;
+	
+					if($lastRepeats[$repeat->key()]===NULL){
+						$lastRepeats[$repeat->key()] = $repeat;
+					}
+					else if ($lastRepeats[$repeat->key()]->count() < $repeat->count()){
+						$lastRepeats[$repeat->key()] = $repeat;
+					}
+				}
+				foreach($repeats as $repeat)
+				{
+					if(array_key_exists($repeat->key(),$lastRepeats)===true && $lastRepeats[$repeat->key()]->count() != $repeat->count()){			
+						echo 'message #'.$repeat->count().' superseded by #'.$lastRepeats[$repeat->key()]->count() .PHP_EOL;
+						echo 'message #'.$repeat->count().': id '.$repeat->id().' ';
+						removeLogCenterRepeatEvent($logcenter_path,$fritz_host, $repeat->id());
+						if ($repeat->firstId()!=NULL){
+							removeLogCenterRepeatEvent($logcenter_path,$fritz_host, $repeat->firstId());
+							echo' firstId:'.$repeat->firstId();
+							}
+						echo PHP_EOL;
+					}
+					if($repeat->count()===2 && $repeat->firstId()!=NULL){
+							echo 'first message superseded by #2'.PHP_EOL;
+							removeLogCenterRepeatEvent($logcenter_path,$fritz_host, $repeat->firstId());
+							echo' firstId:'.$repeat->firstId().PHP_EOL;
+					}	
+				}
 			}
 		}
 		$existing = getLogCenterTail($logcenter_path,$fritz_host);

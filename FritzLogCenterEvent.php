@@ -21,6 +21,7 @@ class FritzLogCenterEvent implements SysLogEvent
 	public function message() : string  { return $this->_message; }
 	
 	public function category() : string { return $this->_category; }
+	public function key() : string { return '_'.$this->_ts.'_'.$this->_message.'_'.$this->_category;}
 	
 }
 ?>
