@@ -15,13 +15,14 @@ $logcenter_path = '/var/services/homes/admin/logs'; // Your logs are located on 
 $syslog_port = 516; // my default port is 516
 
 //parse the commandline to get the connectiondetails for your Fritz!Box, the default username is 'stats'.
-$options = parseCommandLine('iadqjl:', array("udp::","ignore::"), 'stats');
+$options = parseCommandLine('viadqjl:', array("udp::","ignore::"), 'stats');
 echo 'pid= ' . getmypid() . PHP_EOL;
 var_dump($options);
 	
 $rundbquery = cmdLineSwitch("d",$options);
 $runquery = cmdLineSwitch("q",$options);
 $initDb = cmdLineSwitch("i",$options);
+$verbose = cmdLineSwitch("v",$options);
 
 if (cmdLineSwitch("j",$options)==TRUE) $logVersion=1;
 
@@ -174,7 +175,8 @@ if ($fritz->login())
 					if($uniqueTail[$row->key()]===NULL){
 						$uniqueTail[$row->key()] = $row;
 					}
-					else {
+					else
+					{   // we should not see this message
 						echo 'message duplicated by last fetch from device' .PHP_EOL;
 					}
 				}
@@ -199,8 +201,7 @@ if ($fritz->login())
 				
 				foreach($repeats as $repeat)
 				{
-					//echo 'message repeats {'.$repeat->message().'}' .PHP_EOL;
-	
+
 					if($lastRepeats[$repeat->key()]===NULL){
 						$lastRepeats[$repeat->key()] = $repeat;
 					}
@@ -210,20 +211,23 @@ if ($fritz->login())
 				}
 				foreach($repeats as $repeat)
 				{
-					if(array_key_exists($repeat->key(),$lastRepeats)===true && $lastRepeats[$repeat->key()]->count() != $repeat->count()){			
-						echo 'message #'.$repeat->count().' superseded by #'.$lastRepeats[$repeat->key()]->count() .PHP_EOL;
-						echo 'message #'.$repeat->count().': id '.$repeat->id().' ';
-						removeLogCenterRepeatEvent($logcenter_path,$fritz_host, $repeat->id());
+					if(array_key_exists($repeat->key(),$lastRepeats)===true && $lastRepeats[$repeat->key()]->count() != $repeat->count()){
+						if ($verbose===TRUE)
+						{
+						  echo 'message #'.$repeat->count().' superseded by #'.$lastRepeats[$repeat->key()]->count() .PHP_EOL;
+						  echo 'message #'.$repeat->count().': id '.$repeat->id().' ';
+						}
+						removeLogCenterRepeatEvent($logcenter_path,$fritz_host, $repeat->id(),$verbose);
 						if ($repeat->firstId()!=NULL){
-							removeLogCenterRepeatEvent($logcenter_path,$fritz_host, $repeat->firstId());
-							echo' firstId:'.$repeat->firstId();
+							removeLogCenterRepeatEvent($logcenter_path,$fritz_host, $repeat->firstId(),$verbose);
+							if ($verbose===TRUE)echo' firstId:'.$repeat->firstId();
 							}
-						echo PHP_EOL;
+						if ($verbose===TRUE)echo PHP_EOL;
 					}
 					if($repeat->count()===2 && $repeat->firstId()!=NULL){
-							echo 'first message superseded by #2'.PHP_EOL;
-							removeLogCenterRepeatEvent($logcenter_path,$fritz_host, $repeat->firstId());
-							echo' firstId:'.$repeat->firstId().PHP_EOL;
+							if ($verbose===TRUE) echo 'first message superseded by #2'.PHP_EOL;
+							removeLogCenterRepeatEvent($logcenter_path,$fritz_host, $repeat->firstId(),$verbose);
+							if ($verbose===TRUE) echo' firstId:'.$repeat->firstId().PHP_EOL;
 					}	
 				}
 			}

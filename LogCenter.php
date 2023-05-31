@@ -73,7 +73,6 @@ function getLogCenterTailFromTime(string $path, string $host, int $utcsec)
 	else
 	{
 		$query =  "select * FROM logs where utcsec >= ".$utcsec."".((6==$dsm)?(""):(" and host='".$host."'"))." order by utcsec desc, id desc";
-		var_dump($query);
 		//echo($query . PHP_EOL);
 		$rows = $dbh->query($query);
 		$rows = $rows->fetchall();		
@@ -114,11 +113,11 @@ function getLogCenterRepeatEvent(string $path, string $host, string $message, in
 	$dbh = null;
 	return $result;	
 }
-function removeLogCenterRepeatEvent(string $path, string $host, int $id)
+function removeLogCenterRepeatEvent(string $path, string $host, int $id, bool $verbose)
 {
 	$dbh = getLogCenterDb($path, $host);
 	$count = $dbh->exec("delete from logs where id=".$id);
-	echo $count . ' row(s) removed.' . PHP_EOL;
+	if ($verbose===TRUE)echo $count . ' row(s) removed.' . PHP_EOL;
 
 }
 
