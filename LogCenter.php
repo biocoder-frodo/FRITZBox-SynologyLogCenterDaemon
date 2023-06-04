@@ -40,20 +40,30 @@ function getLogCenterTail(string $path, string $host, int $limit=2000)
 		}
 		
 		$query =  "select * FROM logs where utcsec>=" .$prev_ts .((6==$dsm)?(""):(" and host='".$host."'"))." order by utcsec desc, id desc limit " . $limit;
-		//echo($query . PHP_EOL);
-		$rows = $dbh->query($query);
-		$rows = $rows->fetchall();		
-		if (count($rows)>0)
-		{
-			foreach ($rows as $row)
-			{
-				array_push($tail, new FritzLogCenterEvent((int)$row['id'], (int)$row['utcsec'], (string)$row['prog'], (string)$row['msg']));
-			}
-		}
+		$tail = getEventRecords($dbh, $query);
 	}
 	$last_ts=null;
 	$dbh = null;
 	return $tail;
+}
+function getEventRecords($dbh, string $query)
+{
+	$result = array();
+	$rows = $dbh->query($query);
+	$rows = $rows->fetchall();		
+	if (count($rows)>0)
+	{
+		foreach ($rows as $row)
+		{
+			$checkBoot = new DateTime("@".$row['utcsec']);
+			if ((int)$checkBoot->format("Y")===2070)
+			{
+				echo "Warning: The RTC was in its initial state when recording event ".$row['id'].". Please reprocess the database file. [Timestamp in year 2070]". PHP_EOL;
+			}
+			array_push($result, new FritzLogCenterEvent((int)$row['id'], (int)$row['utcsec'], (string)$row['prog'], (string)$row['msg'], (int)$row['r_utcsec']));
+		}
+	}
+	return $result;
 }
 function getLogCenterTailFromTime(string $path, string $host, int $utcsec)
 {
@@ -73,16 +83,7 @@ function getLogCenterTailFromTime(string $path, string $host, int $utcsec)
 	else
 	{
 		$query =  "select * FROM logs where utcsec >= ".$utcsec."".((6==$dsm)?(""):(" and host='".$host."'"))." order by utcsec desc, id desc";
-		//echo($query . PHP_EOL);
-		$rows = $dbh->query($query);
-		$rows = $rows->fetchall();		
-		if (count($rows)>0)
-		{
-			foreach ($rows as $row)
-			{
-				array_push($tail, new FritzLogCenterEvent((int)$row['id'], (int)$row['utcsec'], (string)$row['prog'], (string)$row['msg']));
-			}
-		}
+		$tail = getEventRecords($dbh, $query);
 	}
 
 	$dbh = null;
@@ -93,23 +94,11 @@ function getLogCenterRepeatEvent(string $path, string $host, string $message, in
 {
 	global $dsm;
 	
-	$result=array();
-	
 	$dbh = getLogCenterDb($path, $host);
 		
 	$query =  "select * FROM logs where (utcsec=" .$ts. " or utcsec=" .($ts-1). ") and msg='".$message."'".((6==$dsm)?(""):(" and host='".$host."'"))." order by utcsec desc, id desc";
+	$result = getEventRecords($dbh, $query);
 	
-	$rows = $dbh->query($query);
-	$rows = $rows->fetchall();		
-	if (count($rows)>0)
-	{
-		foreach ($rows as $row)
-		{
-			array_push($result, new FritzLogCenterEvent((int)$row['id'], (int)$row['utcsec'], (string)$row['prog'], (string)$row['msg']));
-		}
-	}
-	
-	$last_ts=null;
 	$dbh = null;
 	return $result;	
 }

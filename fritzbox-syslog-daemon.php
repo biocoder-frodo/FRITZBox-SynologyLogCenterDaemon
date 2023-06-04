@@ -177,7 +177,7 @@ if ($fritz->login())
 					}
 					else
 					{   // we should not see this message
-						echo 'message duplicated by last fetch from device' .PHP_EOL;
+						echo 'Warning: message duplicated by last fetch from device' .PHP_EOL;
 					}
 				}
 				$uniqueTail=NULL;
@@ -211,7 +211,7 @@ if ($fritz->login())
 				}
 				foreach($repeats as $repeat)
 				{
-					if(array_key_exists($repeat->key(),$lastRepeats)===true && $lastRepeats[$repeat->key()]->count() != $repeat->count()){
+					if($lastRepeats[$repeat->key()]->count() != $repeat->count()){
 						if ($verbose===TRUE)
 						{
 						  echo 'message #'.$repeat->count().' superseded by #'.$lastRepeats[$repeat->key()]->count() .PHP_EOL;
@@ -219,16 +219,12 @@ if ($fritz->login())
 						}
 						removeLogCenterRepeatEvent($logcenter_path,$fritz_host, $repeat->id(),$verbose);
 						if ($repeat->firstId()!=NULL){
+							if ($verbose===TRUE) echo 'first message superseded by #'.$lastRepeats[$repeat->key()]->count().PHP_EOL;
 							removeLogCenterRepeatEvent($logcenter_path,$fritz_host, $repeat->firstId(),$verbose);
 							if ($verbose===TRUE)echo' firstId:'.$repeat->firstId();
 							}
 						if ($verbose===TRUE)echo PHP_EOL;
 					}
-					if($repeat->count()===2 && $repeat->firstId()!=NULL){
-							if ($verbose===TRUE) echo 'first message superseded by #2'.PHP_EOL;
-							removeLogCenterRepeatEvent($logcenter_path,$fritz_host, $repeat->firstId(),$verbose);
-							if ($verbose===TRUE) echo' firstId:'.$repeat->firstId().PHP_EOL;
-					}	
 				}
 			}
 		}
