@@ -1,6 +1,7 @@
 <?
 include_once 'SysLogEvent.php';
 include_once 'FritzLogCenterEvent.php';
+include_once 'FritzLogCenterRepeatedEvent.php';
 include_once 'FritzLogEvent.php';
 include_once 'FritzLuaLog.php';
 include_once 'LogCenter.php';
@@ -8,17 +9,20 @@ include_once 'UdpLog.php';
 
 $logVersion=0;
 
+$repeatFilter = "/^(?<message>.*)\s+\[(?<count>[0-9]+) messages since (?<d1>[0-9]{2}).(?<d2>[0-9]{2}).(?<d3>[0-9]{2})\s+(?<ts>[0-9]{2}:[0-9]{2}:[0-9]{2})\]$/";
+
 $logcenter_path = '/var/services/homes/admin/logs'; // Your logs are located on the volume you installed the Log Center package on.
 $syslog_port = 516; // my default port is 516
 
 //parse the commandline to get the connectiondetails for your Fritz!Box, the default username is 'stats'.
-$options = parseCommandLine('iadqjl:', array("udp::","ignore::"), 'stats');
-echo 'pid =' . getmypid() . PHP_EOL;
+$options = parseCommandLine('viadqjl:', array("udp::","ignore::"), 'stats');
+echo 'pid= ' . getmypid() . PHP_EOL;
 var_dump($options);
 	
 $rundbquery = cmdLineSwitch("d",$options);
 $runquery = cmdLineSwitch("q",$options);
 $initDb = cmdLineSwitch("i",$options);
+$verbose = cmdLineSwitch("v",$options);
 
 if (cmdLineSwitch("j",$options)==TRUE) $logVersion=1;
 
@@ -133,17 +137,96 @@ if ($fritz->login())
 		}
 		else
 		{
-
-		
-		$diff = array_udiff( $data->Log, $existing, 'logEventComparison');
-		usort($diff,'logEventSortOrder');
-
-		foreach ($diff as $row)	
-				{	
-					$log->appname($row->category())->msgid($row->id())->info($row->tslog(),$row->message());	
-				}
+			$diff = array_udiff( $data->Log, $existing, 'logEventComparison');
+			usort($diff,'logEventSortOrder');
+	
+			$added = FALSE;
+			foreach ($diff as $row)	
+			{
+				if($added===FALSE) $added = $row->ts();
+				
+				//echo 'adding ts '.$row->ts().PHP_EOL;
+				$log->appname($row->category())->msgid($row->id())->info($row->tslog(),$row->message());	
+			}
 				
 			sleep(300);
+			
+			if($added===FALSE)
+			{
+				//no changes
+			}
+			else
+			{
+				$tail = getLogCenterTailFromTime($logcenter_path,$fritz_host,$added);
+				
+				$added = array();
+				$addedKeys = array();
+				
+				foreach($tail as $row)
+				{
+					array_push($added, $row);
+					array_push($addedKeys, $row->key());
+				}
+				array_unique($addedKeys,SORT_STRING);
+				$uniqueTail=array_fill_keys($addedKeys,NULL);
+				
+				foreach($tail as $row)
+				{
+					if($uniqueTail[$row->key()]===NULL){
+						$uniqueTail[$row->key()] = $row;
+					}
+					else
+					{   // we should not see this message
+						echo 'Warning: message duplicated by last fetch from device' .PHP_EOL;
+					}
+				}
+				$uniqueTail=NULL;
+				$added=NULL;
+				$addedKeys=NULL;
+				
+				// now filter out duplicates of repeated messages we captured before
+				$repeats = array();
+				$repeatKeys = array();
+				foreach(getLogCenterTail($logcenter_path,$fritz_host) as $row)
+				
+				if (preg_match($repeatFilter, $row->message(), $match, PREG_UNMATCHED_AS_NULL)===1)
+				{	
+					$repeat = new FritzLogCenterRepeatedEvent($logcenter_path,$fritz_host,$match,$row);
+					array_push($repeats, $repeat);
+					array_push($repeatKeys, $repeat->key());
+				}
+			
+				array_unique($repeatKeys,SORT_STRING);
+				$lastRepeats=array_fill_keys($repeatKeys,NULL);
+				
+				foreach($repeats as $repeat)
+				{
+
+					if($lastRepeats[$repeat->key()]===NULL){
+						$lastRepeats[$repeat->key()] = $repeat;
+					}
+					else if ($lastRepeats[$repeat->key()]->count() < $repeat->count()){
+						$lastRepeats[$repeat->key()] = $repeat;
+					}
+				}
+				foreach($repeats as $repeat)
+				{
+					if($lastRepeats[$repeat->key()]->count() != $repeat->count()){
+						if ($verbose===TRUE)
+						{
+						  echo 'message #'.$repeat->count().' superseded by #'.$lastRepeats[$repeat->key()]->count() .PHP_EOL;
+						  echo 'message #'.$repeat->count().': id '.$repeat->id().' ';
+						}
+						removeLogCenterRepeatEvent($logcenter_path,$fritz_host, $repeat->id(),$verbose);
+						if ($repeat->firstId()!=NULL){
+							if ($verbose===TRUE) echo 'first message superseded by #'.$lastRepeats[$repeat->key()]->count().PHP_EOL;
+							removeLogCenterRepeatEvent($logcenter_path,$fritz_host, $repeat->firstId(),$verbose);
+							if ($verbose===TRUE)echo' firstId:'.$repeat->firstId();
+							}
+						if ($verbose===TRUE)echo PHP_EOL;
+					}
+				}
+			}
 		}
 		$existing = getLogCenterTail($logcenter_path,$fritz_host);
 	}
