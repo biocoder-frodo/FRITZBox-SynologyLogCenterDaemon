@@ -6,6 +6,7 @@ A PHP 7.2 script that records your FRITZ!Box's System Log events in your Synolog
 Due to a reported bug in FRITZ!OS 6.85 and FRITZ!OS 7.13, the script will record duplicate events in the Log Center database, making this script only useful for AVM models that receive support on FRITZ!OS 7.x
 
 Update May 1, 2020: I noticed that the duplicate timestamps were no longer appearing with FRITZ!OS 7.15. AVM confirmed that this version contains the fix for the issue I reported.
+Update Dec 21, 2024: No changes detected for FRITZ!OS 8.00.
 
 Before you can run the script, please review the changes you need to make to your [modem](https://github.com/biocoder-frodo/FRITZBox-SynologyLogCenterDaemon/wiki/Settings-on-your-FRITZ!Box) and your [NAS](https://github.com/biocoder-frodo/FRITZBox-SynologyLogCenterDaemon/wiki/Settings-on-your-Synology-NAS)
 
