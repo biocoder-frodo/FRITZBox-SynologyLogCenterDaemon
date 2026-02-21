@@ -48,20 +48,34 @@ function getLogCenterTail(string $path, string $host, int $limit=2000)
 }
 function getEventRecords($dbh, string $query)
 {
+	global $rtcMessageWaterMark; 
+	global $fritzData;
+		
 	$result = array();
 	$rows = $dbh->query($query);
-	$rows = $rows->fetchall();		
+	$rows = $rows->fetchall();
+	$mark = $rtcMessageWaterMark;
 	if (count($rows)>0)
 	{
 		foreach ($rows as $row)
 		{
 			$checkBoot = new DateTime("@".$row['utcsec']);
 			if ((int)$checkBoot->format("Y")===2070)
-			{
-				echo "Warning: The RTC was in its initial state when recording event ".$row['id'].". Please reprocess the database file. [Timestamp in year 2070]". PHP_EOL;
+			{   
+				if ((int)$row['id'] > $rtcMessageWaterMark)
+				{
+					echo "Warning: The RTC was in its initial state when recording event ".$row['id'].". Please reprocess the database file. [Timestamp in year 2070]". PHP_EOL;
+					if ((int)$row['id'] > $mark) $mark = (int)$row['id'];
+					if ($fritzData===TRUE)
+					{
+						var_dump($row);
+						echo PHP_EOL;
+					}
+				}
+				array_push($result, new FritzLogCenterEvent((int)$row['id'], (int)$row['utcsec'], (string)$row['prog'], (string)$row['msg'], (int)$row['r_utcsec']));
 			}
-			array_push($result, new FritzLogCenterEvent((int)$row['id'], (int)$row['utcsec'], (string)$row['prog'], (string)$row['msg'], (int)$row['r_utcsec']));
 		}
+		$rtcMessageWaterMark = $mark;
 	}
 	return $result;
 }
