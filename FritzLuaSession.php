@@ -8,7 +8,7 @@ class FritzLuaSession
 	private $protocol;
 	private $loginURI;
 	private $ch;
-	private $debug;
+	protected $debug;
 	
 	public function __construct(string $host,string $password, string $user = "",string $protocol = 'https', bool $with_debug_output = false)
 	{			

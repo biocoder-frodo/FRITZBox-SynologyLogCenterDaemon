@@ -8,6 +8,7 @@ include_once 'LogCenter.php';
 include_once 'UdpLog.php';
 
 $logVersion=0;
+$rtcMessageWaterMark = 0;
 
 $repeatFilter = "/^(?<message>.*)\s+\[(?<count>[0-9]+) messages since (?<d1>[0-9]{2}).(?<d2>[0-9]{2}).(?<d3>[0-9]{2})\s+(?<ts>[0-9]{2}:[0-9]{2}:[0-9]{2})\]$/";
 
@@ -15,7 +16,7 @@ $logcenter_path = '/var/services/homes/admin/logs'; // Your logs are located on 
 $syslog_port = 516; // my default port is 516
 
 //parse the commandline to get the connectiondetails for your Fritz!Box, the default username is 'stats'.
-$options = parseCommandLine('viadqjl:', array("udp::","ignore::"), 'stats');
+$options = parseCommandLine('wviadqjl:', array("udp::","ignore::"), 'stats');
 echo 'pid= ' . getmypid() . PHP_EOL;
 var_dump($options);
 	
@@ -23,6 +24,7 @@ $rundbquery = cmdLineSwitch("d",$options);
 $runquery = cmdLineSwitch("q",$options);
 $initDb = cmdLineSwitch("i",$options);
 $verbose = cmdLineSwitch("v",$options);
+$fritzData = cmdLineSwitch("w",$options);
 
 if (cmdLineSwitch("j",$options)==TRUE) $logVersion=1;
 
@@ -63,6 +65,8 @@ if ($rundbquery===TRUE)
 	$rowcount=-1;
 	try
 	{
+		//$scrap = getLogCenterTail($logcenter_path,$fritz_host);
+
 		// sudo php7x ./fritzbox-syslog-daemon.php -d -l=/var/services/homes/admin/logs
 		$rowcount = getLogCenterCount($logcenter_path,$fritz_host);
 	}
@@ -76,7 +80,7 @@ if ($rundbquery===TRUE)
 }
 
 // prepare the session
-$fritz = new FritzLuaLog($fritz_host, $fritz_pwd, $fritz_user, $transport);
+$fritz = new FritzLuaLog($fritz_host, $fritz_pwd, $fritz_user, $transport, $fritzData);
 if ($runquery===TRUE)
 {
 	if ($fritz->login())
@@ -128,6 +132,7 @@ if ($fritz->login())
 	
 	$existing = getLogCenterTail($logcenter_path,$fritz_host);
 	echo 'Starting loop...' . PHP_EOL;
+
 	while(TRUE)
 	{
 		$data = $fritz->getlogs($filter);
@@ -178,6 +183,12 @@ if ($fritz->login())
 					else
 					{   // we should not see this message
 						echo 'Warning: message duplicated by last fetch from device' .PHP_EOL;
+						if ($fritzData===TRUE)
+						{
+							var_dump($row);
+							echo 'same key but stored value is ...' . PHP_EOL;
+							var_dump($uniqueTail[$row->key()]);
+						}
 					}
 				}
 				$uniqueTail=NULL;
