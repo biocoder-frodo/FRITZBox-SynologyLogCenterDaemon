@@ -95,6 +95,8 @@ if ($runquery===TRUE)
 	die();
 }
 
+//$baseMemory = memory_get_usage();
+
 if ($fritz->login())
 {
 	$existing = getLogCenterTimeStamps($logcenter_path,$fritz_host);
@@ -135,6 +137,9 @@ if ($fritz->login())
 
 	while(TRUE)
 	{
+		gc_collect_cycles();
+//		echo  memory_get_usage() - $baseMemory . PHP_EOL;
+		
 		$data = $fritz->getlogs($filter);
 		if ($data===FALSE)
 		{
